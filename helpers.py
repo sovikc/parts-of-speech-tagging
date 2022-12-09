@@ -1,270 +1,142 @@
-<!DOCTYPE HTML>
-<html>
 
-<head>
-    <meta charset="utf-8">
+import os
+import matplotlib.pyplot as plt
+import matplotlib.image as mplimg
+import networkx as nx
+import random
 
-    <title>helpers.py (editing)</title>
-    <link id="favicon" rel="shortcut icon" type="image/x-icon" href="/static/base/images/favicon-file.ico?v=e2776a7f45692c839d6eea7d7ff6f3b2">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="/static/components/jquery-ui/themes/smoothness/jquery-ui.min.css?v=3c2a865c832a1322285c55c6ed99abb2" type="text/css" />
-    <link rel="stylesheet" href="/static/components/jquery-typeahead/dist/jquery.typeahead.min.css?v=7afb461de36accb1aa133a1710f5bc56" type="text/css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    
-<link rel="stylesheet" href="/static/components/codemirror/lib/codemirror.css?v=288352df06a67ee35003b0981da414ac">
-<link rel="stylesheet" href="/static/components/codemirror/addon/dialog/dialog.css?v=c89dce10b44d2882a024e7befc2b63f5">
-
-    <link rel="stylesheet" href="/static/style/style.min.css?v=4b4b8cb1e49605137f77fed041f8922b" type="text/css"/>
-    
-
-    <link rel="stylesheet" href="/custom/custom.css" type="text/css" />
-    <script src="/static/components/es6-promise/promise.min.js?v=f004a16cb856e0ff11781d01ec5ca8fe" type="text/javascript" charset="utf-8"></script>
-    <script src="/static/components/preact/index.js?v=00a2fac73c670ce39ac53d26640eb542" type="text/javascript"></script>
-    <script src="/static/components/proptypes/index.js?v=c40890eb04df9811fcc4d47e53a29604" type="text/javascript"></script>
-    <script src="/static/components/preact-compat/index.js?v=aea8f6660e54b18ace8d84a9b9654c1c" type="text/javascript"></script>
-    <script src="/static/components/requirejs/require.js?v=951f856e81496aaeec2e71a1c2c0d51f" type="text/javascript" charset="utf-8"></script>
-    <script>
-      require.config({
-          
-          urlArgs: "v=20181102224006",
-          
-          baseUrl: '/static/',
-          paths: {
-            'auth/js/main': 'auth/js/main.min',
-            custom : '/custom',
-            nbextensions : '/nbextensions',
-            kernelspecs : '/kernelspecs',
-            underscore : 'components/underscore/underscore-min',
-            backbone : 'components/backbone/backbone-min',
-            jed: 'components/jed/jed',
-            jquery: 'components/jquery/jquery.min',
-            json: 'components/requirejs-plugins/src/json',
-            text: 'components/requirejs-text/text',
-            bootstrap: 'components/bootstrap/js/bootstrap.min',
-            bootstraptour: 'components/bootstrap-tour/build/js/bootstrap-tour.min',
-            'jquery-ui': 'components/jquery-ui/jquery-ui.min',
-            moment: 'components/moment/min/moment-with-locales',
-            codemirror: 'components/codemirror',
-            termjs: 'components/xterm.js/xterm',
-            typeahead: 'components/jquery-typeahead/dist/jquery.typeahead.min',
-          },
-          map: { // for backward compatibility
-              "*": {
-                  "jqueryui": "jquery-ui",
-              }
-          },
-          shim: {
-            typeahead: {
-              deps: ["jquery"],
-              exports: "typeahead"
-            },
-            underscore: {
-              exports: '_'
-            },
-            backbone: {
-              deps: ["underscore", "jquery"],
-              exports: "Backbone"
-            },
-            bootstrap: {
-              deps: ["jquery"],
-              exports: "bootstrap"
-            },
-            bootstraptour: {
-              deps: ["bootstrap"],
-              exports: "Tour"
-            },
-            "jquery-ui": {
-              deps: ["jquery"],
-              exports: "$"
-            }
-          },
-          waitSeconds: 30,
-      });
-
-      require.config({
-          map: {
-              '*':{
-                'contents': 'services/contents',
-              }
-          }
-      });
-
-      // error-catching custom.js shim.
-      define("custom", function (require, exports, module) {
-          try {
-              var custom = require('custom/custom');
-              console.debug('loaded custom.js');
-              return custom;
-          } catch (e) {
-              console.error("error loading custom.js", e);
-              return {};
-          }
-      })
-
-    document.nbjs_translations = {"domain": "nbjs", "locale_data": {"nbjs": {"": {"domain": "nbjs"}}}};
-    document.documentElement.lang = navigator.language.toLowerCase();
-    </script>
-
-    
-    
-
-</head>
-
-<body class="edit_app "
- 
-data-base-url="/"
-data-file-path="hmm-tagger/helpers.py"
-
-  
- 
-
-dir="ltr">
-
-<noscript>
-    <div id='noscript'>
-      Jupyter Notebook requires JavaScript.<br>
-      Please enable it to proceed. 
-  </div>
-</noscript>
-
-<div id="header">
-  <div id="header-container" class="container">
-  <div id="ipython_notebook" class="nav navbar-brand"><a href="/tree" title='dashboard'>
-      <img src='/static/base/images/logo.png?v=641991992878ee24c6f3826e81054a0f' alt='Jupyter Notebook'/>
-  </a></div>
-
-  
-
-<span id="save_widget" class="pull-left save_widget">
-    <span class="filename"></span>
-    <span class="last_modified"></span>
-</span>
+from io import BytesIO
+from itertools import chain
+from collections import namedtuple, OrderedDict
 
 
-  
-  
-  
-  
+Sentence = namedtuple("Sentence", "words tags")
 
-    <span id="login_widget">
-      
-    </span>
-
-  
-
-  
-  
-  </div>
-  <div class="header-bar"></div>
-
-  
-
-<div id="menubar-container" class="container">
-  <div id="menubar">
-    <div id="menus" class="navbar navbar-default" role="navigation">
-      <div class="container-fluid">
-          <p  class="navbar-text indicator_area">
-          <span id="current-mode" >current mode</span>
-          </p>
-        <button type="button" class="btn btn-default navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-          <i class="fa fa-bars"></i>
-          <span class="navbar-text">Menu</span>
-        </button>
-        <ul class="nav navbar-nav navbar-right">
-          <li id="notification_area"></li>
-        </ul>
-        <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">File</a>
-              <ul id="file-menu" class="dropdown-menu">
-                <li id="new-file"><a href="#">New</a></li>
-                <li id="save-file"><a href="#">Save</a></li>
-                <li id="rename-file"><a href="#">Rename</a></li>
-                <li id="download-file"><a href="#">Download</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Edit</a>
-              <ul id="edit-menu" class="dropdown-menu">
-                <li id="menu-find"><a href="#">Find</a></li>
-                <li id="menu-replace"><a href="#">Find &amp; Replace</a></li>
-                <li class="divider"></li>
-                <li class="dropdown-header">Key Map</li>
-                <li id="menu-keymap-default"><a href="#">Default<i class="fa"></i></a></li>
-                <li id="menu-keymap-sublime"><a href="#">Sublime Text<i class="fa"></i></a></li>
-                <li id="menu-keymap-vim"><a href="#">Vim<i class="fa"></i></a></li>
-                <li id="menu-keymap-emacs"><a href="#">emacs<i class="fa"></i></a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">View</a>
-              <ul id="view-menu" class="dropdown-menu">
-              <li id="toggle_header" title="Show/Hide the logo and notebook title (above menu bar)">
-              <a href="#">Toggle Header</a></li>
-              <li id="menu-line-numbers"><a href="#">Toggle Line Numbers</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Language</a>
-              <ul id="mode-menu" class="dropdown-menu">
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="lower-header-bar"></div>
+def read_data(filename):
+    """Read tagged sentence data"""
+    with open(filename, 'r') as f:
+        sentence_lines = [l.split("\n") for l in f.read().split("\n\n")]
+    return OrderedDict(((s[0], Sentence(*zip(*[l.strip().split("\t")
+                        for l in s[1:]]))) for s in sentence_lines if s[0]))
 
 
-</div>
-
-<div id="site">
-
-
-<div id="texteditor-backdrop">
-<div id="texteditor-container" class="container"></div>
-</div>
+def read_tags(filename):
+    """Read a list of word tag classes"""
+    with open(filename, 'r') as f:
+        tags = f.read().split("\n")
+    return frozenset(tags)
 
 
-</div>
+def model2png(model, filename="", overwrite=False, show_ends=False):
+    """Convert a Pomegranate model into a PNG image
+
+    The conversion pipeline extracts the underlying NetworkX graph object,
+    converts it to a PyDot graph, then writes the PNG data to a bytes array,
+    which can be saved as a file to disk or imported with matplotlib for display.
+
+        Model -> NetworkX.Graph -> PyDot.Graph -> bytes -> PNG
+
+    Parameters
+    ----------
+    model : Pomegranate.Model
+        The model object to convert. The model must have an attribute .graph
+        referencing a NetworkX.Graph instance.
+
+    filename : string (optional)
+        The PNG file will be saved to disk with this filename if one is provided.
+        By default, the image file will NOT be created if a file with this name
+        already exists unless overwrite=True.
+
+    overwrite : bool (optional)
+        overwrite=True allows the new PNG to overwrite the specified file if it
+        already exists
+
+    show_ends : bool (optional)
+        show_ends=True will generate the PNG including the two end states from
+        the Pomegranate model (which are not usually an explicit part of the graph)
+    """
+    nodes = model.graph.nodes()
+    if not show_ends:
+        nodes = [n for n in nodes if n not in (model.start, model.end)]
+    g = nx.relabel_nodes(model.graph.subgraph(nodes), {n: n.name for n in model.graph.nodes()})
+    pydot_graph = nx.drawing.nx_pydot.to_pydot(g)
+    pydot_graph.set_rankdir("LR")
+    png_data = pydot_graph.create_png(prog='dot')
+    img_data = BytesIO()
+    img_data.write(png_data)
+    img_data.seek(0)
+    if filename:
+        if os.path.exists(filename) and not overwrite:
+            raise IOError("File already exists. Use overwrite=True to replace existing files on disk.")
+        with open(filename, 'wb') as f:
+            f.write(img_data.read())
+        img_data.seek(0)
+    return mplimg.imread(img_data)
 
 
+def show_model(model, figsize=(5, 5), **kwargs):
+    """Display a Pomegranate model as an image using matplotlib
+
+    Parameters
+    ----------
+    model : Pomegranate.Model
+        The model object to convert. The model must have an attribute .graph
+        referencing a NetworkX.Graph instance.
+
+    figsize : tuple(int, int) (optional)
+        A tuple specifying the dimensions of a matplotlib Figure that will
+        display the converted graph
+
+    **kwargs : dict
+        The kwargs dict is passed to the model2png program, see that function
+        for details
+    """
+    plt.figure(figsize=figsize)
+    plt.imshow(model2png(model, **kwargs))
+    plt.axis('off')
 
 
+class Subset(namedtuple("BaseSet", "sentences keys vocab X tagset Y N stream")):
+    def __new__(cls, sentences, keys):
+        word_sequences = tuple([sentences[k].words for k in keys])
+        tag_sequences = tuple([sentences[k].tags for k in keys])
+        wordset = frozenset(chain(*word_sequences))
+        tagset = frozenset(chain(*tag_sequences))
+        N = sum(1 for _ in chain(*(sentences[k].words for k in keys)))
+        stream = tuple(zip(chain(*word_sequences), chain(*tag_sequences)))
+        return super().__new__(cls, {k: sentences[k] for k in keys}, keys, wordset, word_sequences,
+                               tagset, tag_sequences, N, stream.__iter__)
+
+    def __len__(self):
+        return len(self.sentences)
+
+    def __iter__(self):
+        return iter(self.sentences.items())
 
 
-    
+class Dataset(namedtuple("_Dataset", "sentences keys vocab X tagset Y training_set testing_set N stream")):
+    def __new__(cls, tagfile, datafile, train_test_split=0.8, seed=112890):
+        tagset = read_tags(tagfile)
+        sentences = read_data(datafile)
+        keys = tuple(sentences.keys())
+        wordset = frozenset(chain(*[s.words for s in sentences.values()]))
+        word_sequences = tuple([sentences[k].words for k in keys])
+        tag_sequences = tuple([sentences[k].tags for k in keys])
+        N = sum(1 for _ in chain(*(s.words for s in sentences.values())))
+        
+        # split data into train/test sets
+        _keys = list(keys)
+        if seed is not None: random.seed(seed)
+        random.shuffle(_keys)
+        split = int(train_test_split * len(_keys))
+        training_data = Subset(sentences, _keys[:split])
+        testing_data = Subset(sentences, _keys[split:])
+        stream = tuple(zip(chain(*word_sequences), chain(*tag_sequences)))
+        return super().__new__(cls, dict(sentences), keys, wordset, word_sequences, tagset,
+                               tag_sequences, training_data, testing_data, N, stream.__iter__)
 
+    def __len__(self):
+        return len(self.sentences)
 
-<script src="/static/edit/js/main.min.js?v=ac978ed627b00fbfa328acc3f14b22fb" type="text/javascript" charset="utf-8"></script>
-
-
-<script type='text/javascript'>
-  function _remove_token_from_url() {
-    if (window.location.search.length <= 1) {
-      return;
-    }
-    var search_parameters = window.location.search.slice(1).split('&');
-    for (var i = 0; i < search_parameters.length; i++) {
-      if (search_parameters[i].split('=')[0] === 'token') {
-        // remote token from search parameters
-        search_parameters.splice(i, 1);
-        var new_search = '';
-        if (search_parameters.length) {
-          new_search = '?' + search_parameters.join('&');
-        }
-        var new_url = window.location.origin + 
-                      window.location.pathname + 
-                      new_search + 
-                      window.location.hash;
-        window.history.replaceState({}, "", new_url);
-        return;
-      }
-    }
-  }
-  _remove_token_from_url();
-</script>
-</body>
-
-</html>
+    def __iter__(self):
+        return iter(self.sentences.items())
